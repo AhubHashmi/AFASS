@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Match Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        #starting-xi, #player-heatmap {
+            display: block;
+            margin: 20px 0;
+            border: 2px solid #ddd;
+        }
+        #stats {
+            margin-top: 20px;
+        }
+        #stats table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #stats th, #stats td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        #stats th {
+            background-color: #f4f4f4;
+        }
+        #error-message {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Football Match Analysis</h1>
+
+    <h2>Spain Starting XI</h2>
+    <img id="starting-xi" alt="Loading Spain Starting XI..." width="500">
+
+    <h2>Player Pass Reception Heatmap</h2>
+    <select id="playerSelect">
+        <option value="select">Select Player</option>
+    </select>
+    <img id="player-heatmap" alt="Select a player to load heatmap." width="500">
+    <p id="error-message"></p>
+
+    <h2>Player Stats</h2>
+    <div id="stats">
+        <h3>xG by Player</h3>
+        <table id="xg-table">
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>xG</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h3>Key Passes by Player</h3>
+        <table id="key-passes-table">
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Key Passes</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h3>Progressive Passes by Player</h3>
+        <table id="progressive-passes-table">
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Progressive Passes</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h3>Dribbles by Player</h3>
+        <table id="dribbles-table">
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Dribbles</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        // Load Spain Starting XI Chart
+        fetch('/chart/starting_xi')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('starting-xi').src = `data:image/png;base64,${data.chart}`;
+            });
+
+        // Fetch player stats
+        fetch('/stats/player_stats')
+            .then(response => response.json())
+            .then(stats => {
+                const xgTable = document.querySelector('#xg-table tbody');
+                const keyPassesTable = document.querySelector('#key-passes-table tbody');
+                const progressivePassesTable = document.querySelector('#progressive-passes-table tbody');
+                const dribblesTable = document.querySelector('#dribbles-table tbody');
+
+                // Clear old data
+                xgTable.innerHTML = '';
+                keyPassesTable.innerHTML = '';
+                progressivePassesTable.innerHTML = '';
+                dribblesTable.innerHTML = '';
+
+                // Populate xG Table
+                for (const player in stats.xg_by_player) {
+                    const row = `<tr><td>${player}</td><td>${stats.xg_by_player[player]}</td></tr>`;
+                    xgTable.innerHTML += row;
+                }
+
+                // Populate Key Passes Table
+                for (const player in stats.key_passes_by_player) {
+                    const row = `<tr><td>${player}</td><td>${stats.key_passes_by_player[player]}</td></tr>`;
+                    keyPassesTable.innerHTML += row;
+                }
+
+                // Populate Progressive Passes Table
+                for (const player in stats.progressive_passes_by_player) {
+                    const row = `<tr><td>${player}</td><td>${stats.progressive_passes_by_player[player]}</td></tr>`;
+                    progressivePassesTable.innerHTML += row;
+                }
+
+                // Populate Dribbles Table
+                for (const player in stats.dribbles_by_player) {
+                    const row = `<tr><td>${player}</td><td>${stats.dribbles_by_player[player]}</td></tr>`;
+                    dribblesTable.innerHTML += row;
+                }
+
+                // Populate player dropdown
+                const playerSelect = document.getElementById('playerSelect');
+                const players = Object.keys(stats.xg_by_player);
+                players.forEach(player => {
+                    const option = document.createElement('option');
+                    option.value = player;
+                    option.text = player;
+                    playerSelect.appendChild(option);
+                });
+            });
+
+        // Load Player Heatmap on Selection
+        document.getElementById('playerSelect').addEventListener('change', function() {
+            const playerName = this.value;
+            const errorMessage = document.getElementById('error-message');
+            if (playerName !== 'select') {
+                fetch(`/chart/player_heatmap/${playerName}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('No data found for this player.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        document.getElementById('player-heatmap').src = `data:image/png;base64,${data.chart}`;
+                        errorMessage.textContent = '';
+                    })
+                    .catch(err => {
+                        errorMessage.textContent = err.message;
+                        document.getElementById('player-heatmap').src = '';
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
